@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import QueryProvider from "@/components/common/QueryProvider";
+import SessionBoot from "@/components/common/SessionBoot";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -37,6 +38,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-canvas font-sans text-sm text-ink">
         <QueryProvider>
+          <SessionBoot />
           {children}
           <Toaster position="top-right" richColors closeButton />
         </QueryProvider>

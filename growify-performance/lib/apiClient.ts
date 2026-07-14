@@ -1,5 +1,3 @@
-import { useAuthStore } from "@/store/useAuthStore";
-
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -9,14 +7,13 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  // Best-effort actor attribution for the audit trail — there's no real auth session yet, so
-  // this is just whichever demo role is currently picked on this browser tab.
-  const actorName = useAuthStore.getState().role?.name;
+  // Session lives in an HttpOnly cookie (see growify-api/src/lib/session.ts) — the browser
+  // sends it automatically for same-origin requests, which this always is via the Next.js
+  // rewrite proxy, so no explicit credentials handling is needed here.
   const res = await fetch(path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...(actorName ? { "x-actor-name": actorName } : {}),
       ...(init?.headers ?? {}),
     },
   });

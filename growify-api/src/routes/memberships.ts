@@ -16,6 +16,11 @@ import {
 } from "../db/schema";
 import { asyncHandler, HttpError } from "../lib/asyncHandler";
 import { actorNameFromRequest, logAudit } from "../lib/audit";
+import {
+  requireAdmin,
+  requireAdminOrMembershipTeamAccess,
+  requireAdminOrMembershipTeamLead,
+} from "../lib/authz";
 import { getMembershipDetail, getMembershipHistory } from "../lib/membershipAggregate";
 import { buildSwot } from "../lib/swot";
 import { parsePeriodParam } from "../lib/periods";
@@ -72,6 +77,7 @@ async function requireMembership(id: string) {
 
 membershipsRouter.get(
   "/:id",
+  requireAdminOrMembershipTeamAccess("id"),
   asyncHandler(async (req, res) => {
     const period = parsePeriodParam(req.query.period);
     const detail = await getMembershipDetail(req.params.id, period);
@@ -81,6 +87,7 @@ membershipsRouter.get(
 
 membershipsRouter.post(
   "/:id/questions",
+  requireAdminOrMembershipTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = addQuestionSchema.parse(req.body);
     await requireMembership(req.params.id);
@@ -94,6 +101,7 @@ membershipsRouter.post(
 
 membershipsRouter.put(
   "/:id/scores",
+  requireAdminOrMembershipTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = putScoresSchema.parse(req.body);
     await requireMembership(req.params.id);
@@ -152,6 +160,7 @@ membershipsRouter.put(
 
 membershipsRouter.put(
   "/:id/targets",
+  requireAdminOrMembershipTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = putTargetsSchema.parse(req.body);
     await requireMembership(req.params.id);
@@ -190,6 +199,7 @@ membershipsRouter.put(
 
 membershipsRouter.put(
   "/:id/fitco",
+  requireAdminOrMembershipTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = putFitcoSchema.parse(req.body);
     await requireMembership(req.params.id);
@@ -227,6 +237,7 @@ membershipsRouter.put(
 
 membershipsRouter.get(
   "/:id/swot/latest",
+  requireAdminOrMembershipTeamAccess("id"),
   asyncHandler(async (req, res) => {
     const period = parsePeriodParam(req.query.period);
     await requireMembership(req.params.id);
@@ -242,6 +253,7 @@ membershipsRouter.get(
 
 membershipsRouter.post(
   "/:id/swot/generate",
+  requireAdminOrMembershipTeamAccess("id"),
   asyncHandler(async (req, res) => {
     const period = parsePeriodParam(req.body?.period);
     await requireMembership(req.params.id);
@@ -257,6 +269,7 @@ membershipsRouter.post(
 
 membershipsRouter.patch(
   "/:id",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const body = updateMembershipSchema.parse(req.body);
     const membership = await requireMembership(req.params.id);
@@ -266,7 +279,7 @@ membershipsRouter.patch(
     if (body.name || body.email) {
       const set: Partial<{ name: string; email: string }> = {};
       if (body.name) set.name = body.name;
-      if (body.email) set.email = body.email;
+      if (body.email) set.email = body.email.toLowerCase();
       await db.update(users).set(set).where(eq(users.id, membership.userId));
       if (body.name) changes.push(`name → ${body.name}`);
       if (body.email) changes.push(`email → ${body.email}`);
@@ -319,6 +332,7 @@ membershipsRouter.patch(
 
 membershipsRouter.post(
   "/:id/offboard",
+  requireAdminOrMembershipTeamLead("id"),
   asyncHandler(async (req, res) => {
     const membership = await requireMembership(req.params.id);
     if (!membership.isActive) throw new HttpError(409, "This employee is already offboarded.");
@@ -340,6 +354,7 @@ membershipsRouter.post(
 
 membershipsRouter.post(
   "/:id/reactivate",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const membership = await requireMembership(req.params.id);
     if (membership.isActive) throw new HttpError(409, "This employee is already active.");
@@ -356,6 +371,7 @@ membershipsRouter.post(
 
 membershipsRouter.get(
   "/:id/audit",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     await requireMembership(req.params.id);
     const rows = await db
@@ -369,6 +385,7 @@ membershipsRouter.get(
 
 membershipsRouter.get(
   "/:id/history",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     // One shared raw-data fetch for all 4 quarters, not 4 separate round trips — see the perf
     // note on loadRawMembershipData in membershipAggregate.ts.

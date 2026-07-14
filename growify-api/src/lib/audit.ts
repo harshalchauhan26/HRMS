@@ -1,14 +1,11 @@
 import { db } from "../db/client";
 import { auditLogs } from "../db/schema";
+import type { AuthContext } from "./session";
 
-/**
- * Actor identity comes from the `x-actor-name` header, set client-side from whichever demo role
- * is currently picked (see useAuthStore) — there's no real authenticated session yet, so this is
- * "who clicked this on this machine," not a verified identity.
- */
-export function actorNameFromRequest(req: { header(name: string): string | undefined }): string | null {
-  const name = req.header("x-actor-name");
-  return name && name.trim() ? name.trim() : null;
+/** Actor identity now comes from the verified session (req.auth), not a client-supplied header —
+ * safe to treat as a trustworthy audit trail. */
+export function actorNameFromRequest(req: { auth?: AuthContext }): string | null {
+  return req.auth?.name ?? null;
 }
 
 export async function logAudit(

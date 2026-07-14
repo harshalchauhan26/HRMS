@@ -89,7 +89,6 @@ export function useOffboardMembership(membershipId: string) {
     onSuccess: () => {
       invalidateMembership(queryClient, membershipId);
       queryClient.invalidateQueries({ queryKey: ["memberships", membershipId, "audit"] });
-      queryClient.invalidateQueries({ queryKey: ["demo-roles"] });
     },
   });
 }
@@ -103,7 +102,6 @@ export function useOffboardMember() {
     onSuccess: (_data, membershipId) => {
       invalidateMembership(queryClient, membershipId);
       queryClient.invalidateQueries({ queryKey: ["memberships", membershipId, "audit"] });
-      queryClient.invalidateQueries({ queryKey: ["demo-roles"] });
     },
   });
 }
@@ -115,7 +113,6 @@ export function useReactivateMembership(membershipId: string) {
     onSuccess: () => {
       invalidateMembership(queryClient, membershipId);
       queryClient.invalidateQueries({ queryKey: ["memberships", membershipId, "audit"] });
-      queryClient.invalidateQueries({ queryKey: ["demo-roles"] });
     },
   });
 }

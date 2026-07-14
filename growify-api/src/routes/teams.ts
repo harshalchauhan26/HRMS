@@ -5,6 +5,7 @@ import { db } from "../db/client";
 import { auditLogs, departments, jobRoles, memberships, targets, teams, users } from "../db/schema";
 import { asyncHandler, HttpError } from "../lib/asyncHandler";
 import { actorNameFromRequest, logAudit } from "../lib/audit";
+import { requireAdmin, requireAdminOrTeamLead, requireAdminOrTeamMember } from "../lib/authz";
 import { cascadeOffboardTeams } from "../lib/cascadeArchive";
 import { getMembershipDetail } from "../lib/membershipAggregate";
 import { parsePeriodParam } from "../lib/periods";
@@ -32,6 +33,7 @@ const bulkTargetsSchema = z.object({
 
 teamsRouter.get(
   "/:id",
+  requireAdminOrTeamMember("id"),
   asyncHandler(async (req, res) => {
     const period = parsePeriodParam(req.query.period);
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
@@ -61,6 +63,7 @@ teamsRouter.get(
 
 teamsRouter.post(
   "/",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const body = createTeamSchema.parse(req.body);
     const [department] = await db.select().from(departments).where(eq(departments.id, body.departmentId));
@@ -76,6 +79,7 @@ teamsRouter.post(
 
 teamsRouter.patch(
   "/:id",
+  requireAdminOrTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = renameTeamSchema.parse(req.body);
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
@@ -92,6 +96,7 @@ teamsRouter.patch(
 
 teamsRouter.delete(
   "/:id",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
     if (!team) throw new HttpError(404, `Team ${req.params.id} not found`);
@@ -115,6 +120,7 @@ teamsRouter.delete(
 
 teamsRouter.post(
   "/:id/restore",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
     if (!team) throw new HttpError(404, `Team ${req.params.id} not found`);
@@ -130,6 +136,7 @@ teamsRouter.post(
 
 teamsRouter.put(
   "/:id/targets",
+  requireAdminOrTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = bulkTargetsSchema.parse(req.body);
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
@@ -181,6 +188,7 @@ teamsRouter.put(
 
 teamsRouter.post(
   "/:id/members",
+  requireAdminOrTeamLead("id"),
   asyncHandler(async (req, res) => {
     const body = addMemberSchema.parse(req.body);
     const [team] = await db.select().from(teams).where(eq(teams.id, req.params.id));
@@ -189,9 +197,10 @@ teamsRouter.post(
     const [jobRole] = await db.select().from(jobRoles).where(eq(jobRoles.id, body.jobRoleId));
     if (!jobRole) throw new HttpError(404, `Job role ${body.jobRoleId} not found`);
 
-    let [user] = await db.select().from(users).where(eq(users.email, body.email));
+    const email = body.email.toLowerCase();
+    let [user] = await db.select().from(users).where(eq(users.email, email));
     if (!user) {
-      [user] = await db.insert(users).values({ name: body.name, email: body.email }).returning();
+      [user] = await db.insert(users).values({ name: body.name, email }).returning();
     }
 
     const membership = await db.transaction(async (tx) => {

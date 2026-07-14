@@ -16,10 +16,13 @@ interface RoleGuardResult {
   allowed: boolean;
 }
 
-/** Redirects unauthenticated or out-of-scope visitors; render nothing until `allowed`. */
+/** Redirects unauthenticated or out-of-scope visitors; render nothing until `allowed`. Waits for
+ * SessionBoot's initial GET /api/auth/me check (`hydrated`) before redirecting, so a real
+ * session isn't bounced to /login while that request is still in flight. */
 export function useRoleGuard(opts: RoleGuardOptions = {}): RoleGuardResult {
   const router = useRouter();
   const role = useAuthStore((s) => s.role);
+  const hydrated = useAuthStore((s) => s.hydrated);
 
   const allowed =
     !!role &&
@@ -27,6 +30,7 @@ export function useRoleGuard(opts: RoleGuardOptions = {}): RoleGuardResult {
     (!opts.teamId || role.tier === "admin" || role.teamId === opts.teamId);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!role) {
       router.replace("/login");
       return;
@@ -34,7 +38,7 @@ export function useRoleGuard(opts: RoleGuardOptions = {}): RoleGuardResult {
     if (!allowed) {
       router.replace(role.teamId ? `/teams/${role.teamId}` : "/login");
     }
-  }, [role, allowed, router]);
+  }, [role, hydrated, allowed, router]);
 
   return { role, allowed };
 }

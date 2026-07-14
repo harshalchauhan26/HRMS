@@ -29,6 +29,9 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  // Only set for the one break-glass admin account (password login). Everyone else signs in
+  // with Google — their email just has to match an existing users row (added via "Add employee").
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useLogout } from "@/hooks/queries/useAuth";
 import { initials } from "@/lib/format";
 
 export interface Crumb {
@@ -14,7 +15,8 @@ export interface Crumb {
 export default function Topbar({ breadcrumbs }: { breadcrumbs: Crumb[] }) {
   const router = useRouter();
   const role = useAuthStore((s) => s.role);
-  const logout = useAuthStore((s) => s.logout);
+  const clearRole = useAuthStore((s) => s.logout);
+  const logout = useLogout();
 
   if (!role) return null;
 
@@ -63,12 +65,16 @@ export default function Topbar({ breadcrumbs }: { breadcrumbs: Crumb[] }) {
 
       <button
         onClick={() => {
-          logout();
-          router.push("/login");
+          logout.mutate(undefined, {
+            onSettled: () => {
+              clearRole();
+              router.push("/login");
+            },
+          });
         }}
         className="rounded-lg border border-hair px-2.5 py-1.5 text-[11.5px] font-medium text-faint transition-colors hover:border-brand hover:text-brand-ink"
       >
-        Switch
+        Sign out
       </button>
     </header>
   );

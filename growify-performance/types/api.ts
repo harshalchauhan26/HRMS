@@ -133,16 +133,3 @@ export interface ApiSwotReport {
   createdAt: string;
 }
 
-export interface ApiDemoRoleEntry {
-  membershipId: string;
-  userId: string;
-  name: string;
-  teamId: string;
-  teamName: string;
-}
-
-export interface ApiDemoRoles {
-  admin: { id: string; name: string; email: string } | null;
-  leads: ApiDemoRoleEntry[];
-  members: ApiDemoRoleEntry[];
-}

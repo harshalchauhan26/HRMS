@@ -72,7 +72,6 @@ export function useAddMember(teamId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teams", teamId] });
       queryClient.invalidateQueries({ queryKey: ["departments"] });
-      queryClient.invalidateQueries({ queryKey: ["demo-roles"] });
     },
   });
 }
@@ -95,7 +94,6 @@ export function useAddMemberToTeam() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["teams", variables.teamId] });
       queryClient.invalidateQueries({ queryKey: ["departments"] });
-      queryClient.invalidateQueries({ queryKey: ["demo-roles"] });
     },
   });
 }

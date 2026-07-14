@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "../db/client";
 import { jobRoles, questions } from "../db/schema";
 import { asyncHandler, HttpError } from "../lib/asyncHandler";
+import { requireAdmin } from "../lib/authz";
 
 export const jobRolesRouter = Router();
 
@@ -27,6 +28,7 @@ jobRolesRouter.get(
 
 jobRolesRouter.post(
   "/",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const body = createJobRoleSchema.parse(req.body);
     const [created] = await db.insert(jobRoles).values(body).returning();
@@ -36,6 +38,7 @@ jobRolesRouter.post(
 
 jobRolesRouter.get(
   "/:id/questions",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const rows = await db
       .select()
@@ -47,6 +50,7 @@ jobRolesRouter.get(
 
 jobRolesRouter.post(
   "/:id/questions",
+  requireAdmin,
   asyncHandler(async (req, res) => {
     const body = createQuestionSchema.parse(req.body);
     const [jobRole] = await db.select().from(jobRoles).where(eq(jobRoles.id, req.params.id));
