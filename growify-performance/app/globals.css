@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* shadcn semantic tokens, mapped onto the Growify palette */
+  --background: #EEF0F3;
+  --foreground: #181A21;
+  --card: #FFFFFF;
+  --card-foreground: #181A21;
+  --popover: #FFFFFF;
+  --popover-foreground: #181A21;
+  --primary: #4338CA;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEEDFB;
+  --secondary-foreground: #2A2380;
+  --muted: #EDEFF3;
+  --muted-foreground: #6D7180;
+  --accent: #EEEDFB;
+  --accent-foreground: #2A2380;
+  --destructive: #D33636;
+  --destructive-foreground: #FFFFFF;
+  --border: #E2E5EB;
+  --input: #E2E5EB;
+  --ring: #4338CA;
+
+  /* Growify-specific tokens */
+  --canvas: #EEF0F3;
+  --panel: #FFFFFF;
+  --hair: #E2E5EB;
+  --hair2: #EDEFF3;
+  --ink: #181A21;
+  --ink-soft: #3A3D48;
+  --faint: #9AA0AE;
+  --brand: #4338CA;
+  --brand-soft: #EEEDFB;
+  --brand-ink: #2A2380;
+  --ok: #15803D;
+  --okbg: #E7F3EC;
+  --warn: #B4740B;
+  --warnbg: #FBF0DC;
+  --bad: #D33636;
+  --badbg: #FBE7E7;
+  --r4: #15803D;
+  --r3: #2563EB;
+  --r2: #C2610C;
+  --r1: #D33636;
+
+  --shadow-card: 0 1px 2px rgba(20, 22, 30, 0.04), 0 8px 26px rgba(20, 22, 30, 0.07);
+  --shadow-lg: 0 20px 60px rgba(20, 22, 30, 0.22);
+}
+
+.dark {
+  --background: #14151B;
+  --foreground: #EDEEF2;
+  --card: #1B1D25;
+  --card-foreground: #EDEEF2;
+  --popover: #1B1D25;
+  --popover-foreground: #EDEEF2;
+  --primary: #6D63E6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #23243A;
+  --secondary-foreground: #C7C3F5;
+  --muted: #23252E;
+  --muted-foreground: #9AA0AE;
+  --accent: #23243A;
+  --accent-foreground: #C7C3F5;
+  --destructive: #F27171;
+  --destructive-foreground: #1B1D25;
+  --border: #2C2E39;
+  --input: #2C2E39;
+  --ring: #6D63E6;
+
+  --canvas: #14151B;
+  --panel: #1B1D25;
+  --hair: #2C2E39;
+  --hair2: #262832;
+  --ink: #EDEEF2;
+  --ink-soft: #C7C9D4;
+  --faint: #6D7180;
+  --brand: #6D63E6;
+  --brand-soft: #23243A;
+  --brand-ink: #C7C3F5;
+  --ok: #34D399;
+  --okbg: #103826;
+  --warn: #EAB35C;
+  --warnbg: #3A2C0F;
+  --bad: #F27171;
+  --badbg: #3A1616;
+  --r4: #34D399;
+  --r3: #60A5FA;
+  --r2: #EAB35C;
+  --r1: #F27171;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 26px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-hair: var(--hair);
+  --color-hair2: var(--hair2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-faint: var(--faint);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-ok: var(--ok);
+  --color-okbg: var(--okbg);
+  --color-warn: var(--warn);
+  --color-warnbg: var(--warnbg);
+  --color-bad: var(--bad);
+  --color-badbg: var(--badbg);
+  --color-r4: var(--r4);
+  --color-r3: var(--r3);
+  --color-r2: var(--r2);
+  --color-r1: var(--r1);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-space-grotesk);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+  }
+  html {
+    /* Keeps scrolled-to / focused elements clear of the sticky topbar. */
+    scroll-padding-top: 4.5rem;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums;
+  }
+}
