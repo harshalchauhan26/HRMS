@@ -99,6 +99,19 @@ membershipsRouter.post(
   })
 );
 
+membershipsRouter.delete(
+  "/:id/questions/:questionId",
+  requireAdminOrMembershipTeamLead("id"),
+  asyncHandler(async (req, res) => {
+    const deleted = await db
+      .delete(questions)
+      .where(and(eq(questions.id, req.params.questionId), eq(questions.membershipId, req.params.id)))
+      .returning();
+    if (!deleted.length) throw new HttpError(404, "Question not found for this employee.");
+    res.status(204).end();
+  })
+);
+
 membershipsRouter.put(
   "/:id/scores",
   requireAdminOrMembershipTeamLead("id"),

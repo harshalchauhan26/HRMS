@@ -63,3 +63,22 @@ jobRolesRouter.post(
     res.status(201).json(created);
   })
 );
+
+jobRolesRouter.delete(
+  "/:id/questions/:questionId",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const deleted = await db
+      .delete(questions)
+      .where(
+        and(
+          eq(questions.id, req.params.questionId),
+          eq(questions.jobRoleId, req.params.id),
+          isNull(questions.membershipId)
+        )
+      )
+      .returning();
+    if (!deleted.length) throw new HttpError(404, "Question not found for this role.");
+    res.status(204).end();
+  })
+);

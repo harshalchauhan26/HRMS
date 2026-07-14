@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import InitialsAvatar from "@/components/common/InitialsAvatar";
 import QuestionRow from "@/components/review/QuestionRow";
 import { scoreColor } from "@/lib/format";
-import { useMembershipDetail, useSaveScores } from "@/hooks/queries/useMemberships";
+import { useDeletePersonalQuestion, useMembershipDetail, useSaveScores } from "@/hooks/queries/useMemberships";
 import type { ApiMembershipDetail, Quarter } from "@/types/api";
 
 const HEAD_BADGE_COLORS = ["#4338CA", "#0891B2", "#7C3AED", "#DB2777", "#0D9488"];
@@ -28,6 +28,7 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
   const quarter = period === "overall" ? null : period;
   const { data: detail } = useMembershipDetail(membershipId, period);
   const saveScores = useSaveScores(membershipId ?? "");
+  const deletePersonalQuestion = useDeletePersonalQuestion(membershipId ?? "");
 
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [draftValues, setDraftValues] = useState<Record<string, number>>({});
@@ -152,6 +153,8 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
                   note={draftNotes[question.id] ?? ""}
                   onChangeValue={(v) => setValue(question.id, v)}
                   onChangeNote={(v) => setNote(question.id, v)}
+                  isPersonal={question.scope === "personal"}
+                  onDelete={() => deletePersonalQuestion.mutateAsync(question.id)}
                 />
               ))}
             </div>

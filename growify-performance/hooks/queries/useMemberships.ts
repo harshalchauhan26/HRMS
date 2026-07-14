@@ -65,6 +65,14 @@ export function useAddPersonalQuestion(membershipId: string) {
   });
 }
 
+export function useDeletePersonalQuestion(membershipId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (questionId: string) => api.del(`/api/memberships/${membershipId}/questions/${questionId}`),
+    onSuccess: () => invalidateMembership(queryClient, membershipId),
+  });
+}
+
 export function useUpdateMembership(membershipId: string) {
   const queryClient = useQueryClient();
   return useMutation({

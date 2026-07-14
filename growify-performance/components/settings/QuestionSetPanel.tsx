@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import IconDeleteButton from "@/components/common/IconDeleteButton";
 import type { ApiHead, ApiJobRole } from "@/types/api";
 
 const HEAD_BADGE_COLORS = ["#4338CA", "#0891B2", "#7C3AED", "#DB2777", "#0D9488"];
@@ -8,11 +9,13 @@ export default function QuestionSetPanel({
   heads,
   questions,
   onAddQuestion,
+  onDeleteQuestion,
 }: {
   jobRole: ApiJobRole;
   heads: ApiHead[];
   questions: { id: string; headId: string; text: string }[];
   onAddQuestion: () => void;
+  onDeleteQuestion: (questionId: string) => Promise<unknown>;
 }) {
   const headIndexById = new Map(heads.map((h, i) => [h.id, i]));
 
@@ -44,6 +47,11 @@ export default function QuestionSetPanel({
               </span>
               <span>{q.text}</span>
               <span className="ml-auto shrink-0 text-[10.5px] text-faint">Shared · all {jobRole.name}s</span>
+              <IconDeleteButton
+                title="Delete question"
+                confirmMessage={`Delete this question? It'll be removed from every ${jobRole.name}'s scorecard, and any scores already given for it are gone too.`}
+                onConfirm={() => onDeleteQuestion(q.id)}
+              />
             </div>
           );
         })}

@@ -7,7 +7,12 @@ import QuestionSetPanel from "@/components/settings/QuestionSetPanel";
 import CreateJobRoleSheet from "@/components/settings/CreateJobRoleSheet";
 import AddQuestionSheet from "@/components/settings/AddQuestionSheet";
 import { useRoleGuard } from "@/hooks/useRoleGuard";
-import { useAddSharedQuestion, useJobRoleQuestions, useJobRoles } from "@/hooks/queries/useJobRoles";
+import {
+  useAddSharedQuestion,
+  useDeleteSharedQuestion,
+  useJobRoleQuestions,
+  useJobRoles,
+} from "@/hooks/queries/useJobRoles";
 import { useHeads } from "@/hooks/queries/useHeads";
 
 export default function SettingsPage() {
@@ -22,6 +27,7 @@ export default function SettingsPage() {
   const activeRole = jobRoles?.find((r) => r.id === activeRoleId);
   const { data: questions } = useJobRoleQuestions(activeRoleId);
   const addSharedQuestion = useAddSharedQuestion(activeRoleId ?? "");
+  const deleteSharedQuestion = useDeleteSharedQuestion(activeRoleId ?? "");
 
   if (!allowed) return null;
 
@@ -49,6 +55,7 @@ export default function SettingsPage() {
             heads={heads ?? []}
             questions={questions ?? []}
             onAddQuestion={() => setAddQuestionOpen(true)}
+            onDeleteQuestion={(questionId) => deleteSharedQuestion.mutateAsync(questionId)}
           />
         )}
       </div>

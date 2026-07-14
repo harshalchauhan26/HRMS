@@ -41,3 +41,15 @@ export function useAddSharedQuestion(jobRoleId: string) {
     },
   });
 }
+
+export function useDeleteSharedQuestion(jobRoleId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (questionId: string) => api.del(`/api/job-roles/${jobRoleId}/questions/${questionId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["job-roles", jobRoleId, "questions"] });
+      queryClient.invalidateQueries({ queryKey: ["memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+    },
+  });
+}
