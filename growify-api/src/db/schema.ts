@@ -24,6 +24,15 @@ export const memberLevelEnum = pgEnum("member_level", ["Lead", "Junior-Mid", "Ju
  */
 export const periodEnum = pgEnum("period", ["q1", "q2", "q3", "q4"]);
 
+/** "rating" = the existing 1-4 competency scale; "number" = a free-form numeric answer (a count,
+ * a currency figure, whatever the question calls for) — no 1-4 constraint applies to it. */
+export const questionTypeEnum = pgEnum("question_type", ["rating", "number"]);
+
+/** Two independent scoring layers per question: the employee's own self-assessment (reflection
+ * only, no weight in any aggregate) and the team lead/HR's review score (the "official" number
+ * used everywhere else in the app). See growify-api/src/lib/membershipAggregate.ts. */
+export const scoredByEnum = pgEnum("scored_by", ["self", "reviewer"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -112,6 +121,7 @@ export const questions = pgTable(
     jobRoleId: uuid("job_role_id").references(() => jobRoles.id, { onDelete: "cascade" }),
     membershipId: uuid("membership_id").references(() => memberships.id, { onDelete: "cascade" }),
     text: text("text").notNull(),
+    type: questionTypeEnum("type").notNull().default("rating"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -133,18 +143,22 @@ export const scores = pgTable(
       .notNull()
       .references(() => questions.id, { onDelete: "cascade" }),
     period: periodEnum("period").notNull(),
-    value: integer("value").notNull(),
+    // "rating" questions still use whole 1-4 values, validated at the API layer (per
+    // question.type) rather than a DB check constraint, since "number" questions can hold any
+    // real value — one column has to serve both.
+    value: numeric("value", { precision: 12, scale: 2 }).notNull(),
     note: text("note"),
+    scoredBy: scoredByEnum("scored_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    unique("scores_membership_question_period_unique").on(
+    unique("scores_membership_question_period_scoredby_unique").on(
       table.membershipId,
       table.questionId,
-      table.period
+      table.period,
+      table.scoredBy
     ),
-    check("scores_value_range", sql`${table.value} between 1 and 4`),
   ]
 );
 

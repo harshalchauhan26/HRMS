@@ -21,10 +21,13 @@ const HEAD_BADGE_COLORS = ["#4338CA", "#0891B2", "#7C3AED", "#DB2777", "#0D9488"
 interface ScoringSheetProps {
   membershipId: string | null;
   period: Quarter | "overall";
+  /** "self" = the employee's own reflection (no weight in any aggregate); "reviewer" = the TL/HR
+   * score that's the official number everywhere else in the app. */
+  mode: "self" | "reviewer";
   onClose: () => void;
 }
 
-export default function ScoringSheet({ membershipId, period, onClose }: ScoringSheetProps) {
+export default function ScoringSheet({ membershipId, period, mode, onClose }: ScoringSheetProps) {
   const quarter = period === "overall" ? null : period;
   const { data: detail } = useMembershipDetail(membershipId, period);
   const saveScores = useSaveScores(membershipId ?? "");
@@ -34,15 +37,17 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
   const [draftValues, setDraftValues] = useState<Record<string, number>>({});
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
 
-  const key = detail ? `${detail.id}:${period}` : null;
+  const key = detail ? `${detail.id}:${period}:${mode}` : null;
   if (detail && key !== loadedKey) {
     setLoadedKey(key);
     const values: Record<string, number> = {};
     const notes: Record<string, string> = {};
     for (const head of detail.heads) {
       for (const q of head.questions) {
-        if (q.value != null) values[q.id] = q.value;
-        if (q.note) notes[q.id] = q.note;
+        const value = mode === "self" ? q.selfValue : q.reviewerValue;
+        const note = mode === "self" ? q.selfNote : q.reviewerNote;
+        if (value != null) values[q.id] = value;
+        if (note) notes[q.id] = note;
       }
     }
     setDraftValues(values);
@@ -51,8 +56,10 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
 
   if (!membershipId || !detail || !quarter) return null;
 
+  // Only "rating" questions feed the live /4 average preview — "number" questions are
+  // informational data points, same rule as the backend aggregate.
   function headAvg(head: ApiMembershipDetail["heads"][number]): number | null {
-    const scored = head.questions.filter((q) => draftValues[q.id] != null);
+    const scored = head.questions.filter((q) => q.type === "rating" && draftValues[q.id] != null);
     return scored.length
       ? scored.reduce((sum, q) => sum + draftValues[q.id], 0) / scored.length
       : null;
@@ -60,11 +67,12 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
 
   const headAverages = detail.heads.map(headAvg);
   const scoredHeadAverages = headAverages.filter((v): v is number => v != null);
-  const overall = scoredHeadAverages.length
+  const liveOverall = scoredHeadAverages.length
     ? scoredHeadAverages.reduce((a, b) => a + b, 0) / scoredHeadAverages.length
     : null;
   const totalQuestions = detail.heads.reduce((sum, h) => sum + h.questions.length, 0);
   const scoredCount = Object.keys(draftValues).length;
+  const otherOverall = mode === "self" ? detail.overall : detail.selfOverall;
 
   function setValue(questionId: string, value: number | null) {
     setDraftValues((prev) => {
@@ -90,6 +98,7 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
     saveScores.mutate(
       {
         period: quarter,
+        scoredBy: mode,
         scores: allQuestionIds.map((id) => ({
           questionId: id,
           value: draftValues[id] ?? null,
@@ -98,7 +107,7 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
       },
       {
         onSuccess: () => {
-          toast.success("Scores saved.");
+          toast.success(mode === "self" ? "Self-assessment saved." : "Review scores saved.");
           onClose();
         },
         onError: () => toast.error("Couldn't save scores."),
@@ -112,23 +121,43 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
         <SheetHeader className="flex-row items-center gap-3.5 border-b border-hair py-4.5 pr-14 pl-6">
           <InitialsAvatar id={detail.id} name={detail.user.name} />
           <div>
-            <SheetTitle className="text-[17px]">{detail.user.name}</SheetTitle>
+            <SheetTitle className="text-[17px]">
+              {detail.user.name} <span className="font-normal text-muted-foreground">· {mode === "self" ? "Self-assessment" : "Review scoring"}</span>
+            </SheetTitle>
             <div className="text-xs text-muted-foreground">
               {detail.jobRole.name} · {detail.jobRole.level} · {detail.team.name}
             </div>
           </div>
           <div className="ml-auto text-right">
-            <div className="font-mono text-[26px] leading-none font-semibold" style={{ color: scoreColor(overall) }}>
-              {overall ? overall.toFixed(2) : "—"}
+            <div className="font-mono text-[26px] leading-none font-semibold" style={{ color: scoreColor(liveOverall) }}>
+              {liveOverall ? liveOverall.toFixed(2) : "—"}
             </div>
-            <div className="text-[10px] tracking-wide text-muted-foreground uppercase">Overall /4</div>
+            <div className="text-[10px] tracking-wide text-muted-foreground uppercase">
+              {mode === "self" ? "Your self-score /4" : "Reviewer overall /4"}
+            </div>
+            {otherOverall != null && (
+              <div className="mt-0.5 text-[10px] text-faint">
+                {mode === "self" ? "Reviewer" : "Self"}: {otherOverall.toFixed(2)}
+              </div>
+            )}
           </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pt-2 pb-5">
           <div className="my-3.5 rounded-lg bg-canvas px-3 py-2.5 text-[11.5px] text-muted-foreground">
-            Score each 1–4. Leave blank where there isn&apos;t enough evidence — blanks are ignored in the
-            averages. A {detail.jobRole.level} at 3 meets the bar for their level.
+            {mode === "self" ? (
+              <>
+                Score yourself honestly on what you think you achieved. This is for your own
+                reflection — it doesn&apos;t affect your official score, which your team lead / HR sets
+                separately.
+              </>
+            ) : (
+              <>
+                Score each 1–4. Leave blank where there isn&apos;t enough evidence — blanks are ignored
+                in the averages. A {detail.jobRole.level} at 3 meets the bar for their level. This is
+                the official score.
+              </>
+            )}
           </div>
 
           {detail.heads.map((head, hi) => (
@@ -149,10 +178,14 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
                 <QuestionRow
                   key={question.id}
                   question={question.text}
+                  type={question.type}
                   value={draftValues[question.id] ?? null}
                   note={draftNotes[question.id] ?? ""}
                   onChangeValue={(v) => setValue(question.id, v)}
                   onChangeNote={(v) => setNote(question.id, v)}
+                  otherLabel={mode === "self" ? "Reviewer score" : "Self-assessment"}
+                  otherValue={mode === "self" ? question.reviewerValue : question.selfValue}
+                  otherNote={mode === "self" ? question.reviewerNote : question.selfNote}
                   isPersonal={question.scope === "personal"}
                   onDelete={() => deletePersonalQuestion.mutateAsync(question.id)}
                 />
@@ -169,7 +202,7 @@ export default function ScoringSheet({ membershipId, period, onClose }: ScoringS
             Cancel
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saveScores.isPending}>
-            Save scores
+            {mode === "self" ? "Save self-assessment" : "Save review scores"}
           </Button>
         </SheetFooter>
       </SheetContent>

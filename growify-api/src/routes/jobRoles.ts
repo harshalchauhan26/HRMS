@@ -16,6 +16,7 @@ const createJobRoleSchema = z.object({
 const createQuestionSchema = z.object({
   headId: z.string().uuid(),
   text: z.string().min(1),
+  type: z.enum(["rating", "number"]).default("rating"),
 });
 
 jobRolesRouter.get(
@@ -58,7 +59,7 @@ jobRolesRouter.post(
 
     const [created] = await db
       .insert(questions)
-      .values({ headId: body.headId, jobRoleId: req.params.id, text: body.text })
+      .values({ headId: body.headId, jobRoleId: req.params.id, text: body.text, type: body.type })
       .returning();
     res.status(201).json(created);
   })

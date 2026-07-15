@@ -33,7 +33,8 @@ export default function TeamDetailPage() {
   const { data: departments } = useDepartments(period, true);
 
   const [openMemberId, setOpenMemberId] = useState<string | null>(null);
-  const [scoringMemberId, setScoringMemberId] = useState<string | null>(null);
+  const [reviewMemberId, setReviewMemberId] = useState<string | null>(null);
+  const [selfAssessMemberId, setSelfAssessMemberId] = useState<string | null>(null);
   const [swotMemberId, setSwotMemberId] = useState<string | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [addQuestionMemberId, setAddQuestionMemberId] = useState<string | null>(null);
@@ -142,7 +143,9 @@ export default function TeamDetailPage() {
               isOpen={openMemberId === team.lead.id}
               onToggle={() => toggle(team.lead!.id)}
               canEdit={canEdit}
-              onScore={setScoringMemberId}
+              isSelf={role.membershipId === team.lead.id}
+              onReviewScore={setReviewMemberId}
+              onSelfAssess={setSelfAssessMemberId}
               onSwot={setSwotMemberId}
               onAddQuestion={setAddQuestionMemberId}
               onViewProfile={role.tier === "admin" ? (id) => router.push(`/employees/${id}`) : undefined}
@@ -157,7 +160,9 @@ export default function TeamDetailPage() {
               isOpen={openMemberId === m.id}
               onToggle={() => toggle(m.id)}
               canEdit={canEdit}
-              onScore={setScoringMemberId}
+              isSelf={role.membershipId === m.id}
+              onReviewScore={setReviewMemberId}
+              onSelfAssess={setSelfAssessMemberId}
               onSwot={setSwotMemberId}
               onAddQuestion={setAddQuestionMemberId}
               onViewProfile={role.tier === "admin" ? (id) => router.push(`/employees/${id}`) : undefined}
@@ -175,7 +180,9 @@ export default function TeamDetailPage() {
               isOpen
               onToggle={() => {}}
               canEdit={false}
-              onScore={() => {}}
+              isSelf
+              onReviewScore={() => {}}
+              onSelfAssess={setSelfAssessMemberId}
               onSwot={setSwotMemberId}
               onAddQuestion={() => {}}
             />
@@ -189,14 +196,25 @@ export default function TeamDetailPage() {
         </>
       )}
 
-      <ScoringSheet membershipId={scoringMemberId} period={period} onClose={() => setScoringMemberId(null)} />
+      <ScoringSheet
+        membershipId={reviewMemberId}
+        period={period}
+        mode="reviewer"
+        onClose={() => setReviewMemberId(null)}
+      />
+      <ScoringSheet
+        membershipId={selfAssessMemberId}
+        period={period}
+        mode="self"
+        onClose={() => setSelfAssessMemberId(null)}
+      />
       <SwotDrawer membershipId={swotMemberId} period={period} onClose={() => setSwotMemberId(null)} />
       <AddMemberSheet teamId={team.id} open={addMemberOpen} onClose={() => setAddMemberOpen(false)} />
       <AddQuestionSheet
         open={!!addQuestionMemberId}
         title="Add personal question"
         onClose={() => setAddQuestionMemberId(null)}
-        onSubmit={(headId, text) => addPersonalQuestion.mutateAsync({ headId, text })}
+        onSubmit={(headId, text, type) => addPersonalQuestion.mutateAsync({ headId, text, type })}
       />
       <RenameSheet
         title="Rename team"

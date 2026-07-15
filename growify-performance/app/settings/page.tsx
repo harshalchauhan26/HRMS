@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import RoleList from "@/components/settings/RoleList";
+import CategoriesPanel from "@/components/settings/CategoriesPanel";
 import QuestionSetPanel from "@/components/settings/QuestionSetPanel";
 import CreateJobRoleSheet from "@/components/settings/CreateJobRoleSheet";
 import AddQuestionSheet from "@/components/settings/AddQuestionSheet";
@@ -42,6 +43,8 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <CategoriesPanel />
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_1fr]">
         <RoleList
           roles={jobRoles ?? []}
@@ -66,7 +69,7 @@ export default function SettingsPage() {
           open={addQuestionOpen}
           title={`Add question to ${activeRole?.name ?? "role"}`}
           onClose={() => setAddQuestionOpen(false)}
-          onSubmit={(headId, text) => addSharedQuestion.mutateAsync({ headId, text })}
+          onSubmit={(headId, text, type) => addSharedQuestion.mutateAsync({ headId, text, type })}
         />
       )}
     </AppLayout>

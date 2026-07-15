@@ -30,6 +30,7 @@ export function useSaveScores(membershipId: string) {
   return useMutation({
     mutationFn: (body: {
       period: Quarter;
+      scoredBy: "self" | "reviewer";
       scores: { questionId: string; value: number | null; note?: string | null }[];
     }) => api.put<ApiMembershipDetail>(`/api/memberships/${membershipId}/scores`, body),
     onSuccess: () => invalidateMembership(queryClient, membershipId),
@@ -59,7 +60,7 @@ export function useSaveFitco(membershipId: string) {
 export function useAddPersonalQuestion(membershipId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { headId: string; text: string }) =>
+    mutationFn: (body: { headId: string; text: string; type: "rating" | "number" }) =>
       api.post(`/api/memberships/${membershipId}/questions`, body),
     onSuccess: () => invalidateMembership(queryClient, membershipId),
   });

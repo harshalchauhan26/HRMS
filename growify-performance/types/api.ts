@@ -74,16 +74,24 @@ export interface ApiQuestionWithScore {
   id: string;
   headId: string;
   text: string;
+  type: "rating" | "number";
   scope: "shared" | "personal";
-  value: number | null;
-  note: string | null;
+  /** Self-assessment — informational only, never feeds an aggregate. */
+  selfValue: number | null;
+  selfNote: string | null;
+  /** Team lead / HR review — the official score. */
+  reviewerValue: number | null;
+  reviewerNote: string | null;
 }
 
 export interface ApiHeadWithQuestions {
   id: string;
   name: string;
   orderIndex: number;
+  /** Reviewer-only average — official. */
   average: number | null;
+  /** Self-assessment average — informational only. */
+  selfAverage: number | null;
   questions: ApiQuestionWithScore[];
 }
 
@@ -99,8 +107,12 @@ export interface ApiMembershipDetail {
   targets: { metric: string; target: number | null; actual: number | null }[];
   fitco: { phase: number; value: number }[];
   heads: ApiHeadWithQuestions[];
+  /** Reviewer-only overall — the official /4 number shown everywhere. */
   overall: number | null;
+  /** Self-assessment overall — informational only. */
+  selfOverall: number | null;
   hasScores: boolean;
+  hasSelfScores: boolean;
 }
 
 export interface ApiTeamDetail {

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import IconDeleteButton from "@/components/common/IconDeleteButton";
+import Pill from "@/components/common/Pill";
 import type { ApiHead, ApiJobRole } from "@/types/api";
 
 const HEAD_BADGE_COLORS = ["#4338CA", "#0891B2", "#7C3AED", "#DB2777", "#0D9488"];
@@ -13,7 +14,7 @@ export default function QuestionSetPanel({
 }: {
   jobRole: ApiJobRole;
   heads: ApiHead[];
-  questions: { id: string; headId: string; text: string }[];
+  questions: { id: string; headId: string; text: string; type: "rating" | "number" }[];
   onAddQuestion: () => void;
   onDeleteQuestion: (questionId: string) => Promise<unknown>;
 }) {
@@ -45,8 +46,11 @@ export default function QuestionSetPanel({
               >
                 {headIndex + 1}
               </span>
-              <span>{q.text}</span>
-              <span className="ml-auto shrink-0 text-[10.5px] text-faint">Shared · all {jobRole.name}s</span>
+              <span className="flex-1">{q.text}</span>
+              <Pill tone={q.type === "number" ? "brand" : "neutral"}>
+                {q.type === "number" ? "Number" : "Rating"}
+              </Pill>
+              <span className="shrink-0 text-[10.5px] text-faint">Shared · all {jobRole.name}s</span>
               <IconDeleteButton
                 title="Delete question"
                 confirmMessage={`Delete this question? It'll be removed from every ${jobRole.name}'s scorecard, and any scores already given for it are gone too.`}

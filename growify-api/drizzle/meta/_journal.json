@@ -29,6 +29,13 @@
       "when": 1784021279216,
       "tag": "0003_mixed_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784095756330,
+      "tag": "0004_silky_killmonger",
+      "breakpoints": true
     }
   ]
 }

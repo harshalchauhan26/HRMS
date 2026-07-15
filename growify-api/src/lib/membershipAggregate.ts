@@ -8,16 +8,24 @@ export interface QuestionWithScore {
   id: string;
   headId: string;
   text: string;
+  type: "rating" | "number";
   scope: "shared" | "personal";
-  value: number | null;
-  note: string | null;
+  /** Self-assessment — informational only, never feeds any aggregate/official number. */
+  selfValue: number | null;
+  selfNote: string | null;
+  /** Team lead / HR review — the official score used everywhere else in the app. */
+  reviewerValue: number | null;
+  reviewerNote: string | null;
 }
 
 export interface HeadWithQuestions {
   id: string;
   name: string;
   orderIndex: number;
+  /** Reviewer-only average — "official". */
   average: number | null;
+  /** Self-assessment average — informational only. */
+  selfAverage: number | null;
   questions: QuestionWithScore[];
 }
 
@@ -33,8 +41,12 @@ export interface MembershipDetail {
   targets: { metric: string; target: number | null; actual: number | null }[];
   fitco: { phase: number; value: number }[];
   heads: HeadWithQuestions[];
+  /** Reviewer-only overall — the official /4 number shown everywhere (headline stats, SWOT). */
   overall: number | null;
+  /** Self-assessment overall — informational only, for the employee's own reflection. */
+  selfOverall: number | null;
   hasScores: boolean;
+  hasSelfScores: boolean;
 }
 
 export interface MembershipHistoryPoint {
@@ -112,20 +124,30 @@ async function loadRawMembershipData(membershipId: string): Promise<RawMembershi
 function computeDetailForPeriod(raw: RawMembershipData, period: PeriodParam): MembershipDetail {
   const { row, allHeads, effectiveQuestions, allTargetRows, allFitcoRows, allScoreRows } = raw;
 
+  const selfScoreRows = allScoreRows.filter((s) => s.scoredBy === "self");
+  const reviewerScoreRows = allScoreRows.filter((s) => s.scoredBy === "reviewer");
+
   // period scoping: a specific quarter filters to that quarter's rows; "overall" averages across
-  // whichever quarters have data.
-  const scoreValueByQuestion =
-    period === "overall"
-      ? averageByGroup(allScoreRows, (s) => s.questionId, (s) => s.value)
-      : new Map(
-          allScoreRows.filter((s) => s.period === period).map((s) => [s.questionId, s.value])
-        );
-  const scoreNoteByQuestion = new Map(
-    allScoreRows
-      .filter((s) => period === "overall" || s.period === period)
-      .filter((s) => s.note)
-      .map((s) => [s.questionId, s.note as string])
-  );
+  // whichever quarters have data. `value` is a numeric(12,2) column — postgres.js/drizzle return
+  // numeric columns as strings, so every read here goes through Number(...).
+  function valueByQuestion(rows: typeof allScoreRows) {
+    return period === "overall"
+      ? averageByGroup(rows, (s) => s.questionId, (s) => Number(s.value))
+      : new Map(rows.filter((s) => s.period === period).map((s) => [s.questionId, Number(s.value)]));
+  }
+  function noteByQuestion(rows: typeof allScoreRows) {
+    return new Map(
+      rows
+        .filter((s) => period === "overall" || s.period === period)
+        .filter((s) => s.note)
+        .map((s) => [s.questionId, s.note as string])
+    );
+  }
+
+  const selfValueByQuestion = valueByQuestion(selfScoreRows);
+  const selfNoteByQuestion = noteByQuestion(selfScoreRows);
+  const reviewerValueByQuestion = valueByQuestion(reviewerScoreRows);
+  const reviewerNoteByQuestion = noteByQuestion(reviewerScoreRows);
 
   const targetValueByMetric =
     period === "overall"
@@ -153,26 +175,43 @@ function computeDetailForPeriod(raw: RawMembershipData, period: PeriodParam): Me
         );
 
   const headsWithQuestions: HeadWithQuestions[] = allHeads.map((head) => {
-    const headQuestions = effectiveQuestions
+    const headQuestions: QuestionWithScore[] = effectiveQuestions
       .filter((q) => q.headId === head.id)
       .map((q) => ({
         id: q.id,
         headId: q.headId,
         text: q.text,
+        type: q.type,
         scope: q.scope,
-        value: scoreValueByQuestion.get(q.id) ?? null,
-        note: scoreNoteByQuestion.get(q.id) ?? null,
+        selfValue: selfValueByQuestion.get(q.id) ?? null,
+        selfNote: selfNoteByQuestion.get(q.id) ?? null,
+        reviewerValue: reviewerValueByQuestion.get(q.id) ?? null,
+        reviewerNote: reviewerNoteByQuestion.get(q.id) ?? null,
       }));
-    const scored = headQuestions.filter((q) => q.value != null);
-    const average = scored.length
-      ? scored.reduce((sum, q) => sum + (q.value as number), 0) / scored.length
+
+    // Only "rating" (1-4) questions feed the /4 averages — "number" questions are informational
+    // data points on their own scale, not comparable to a competency rating.
+    const ratingQuestions = headQuestions.filter((q) => q.type === "rating");
+    const selfScored = ratingQuestions.filter((q) => q.selfValue != null);
+    const reviewerScored = ratingQuestions.filter((q) => q.reviewerValue != null);
+    const selfAverage = selfScored.length
+      ? selfScored.reduce((sum, q) => sum + (q.selfValue as number), 0) / selfScored.length
       : null;
-    return { id: head.id, name: head.name, orderIndex: head.orderIndex, average, questions: headQuestions };
+    const average = reviewerScored.length
+      ? reviewerScored.reduce((sum, q) => sum + (q.reviewerValue as number), 0) / reviewerScored.length
+      : null;
+
+    return { id: head.id, name: head.name, orderIndex: head.orderIndex, average, selfAverage, questions: headQuestions };
   });
 
   const scoredHeads = headsWithQuestions.filter((h) => h.average != null);
   const overall = scoredHeads.length
     ? scoredHeads.reduce((sum, h) => sum + (h.average as number), 0) / scoredHeads.length
+    : null;
+
+  const selfScoredHeads = headsWithQuestions.filter((h) => h.selfAverage != null);
+  const selfOverall = selfScoredHeads.length
+    ? selfScoredHeads.reduce((sum, h) => sum + (h.selfAverage as number), 0) / selfScoredHeads.length
     : null;
 
   return {
@@ -194,7 +233,9 @@ function computeDetailForPeriod(raw: RawMembershipData, period: PeriodParam): Me
       .map((phase) => ({ phase, value: fitcoValueByPhase.get(String(phase))! })),
     heads: headsWithQuestions,
     overall,
-    hasScores: scoreValueByQuestion.size > 0,
+    selfOverall,
+    hasScores: reviewerValueByQuestion.size > 0,
+    hasSelfScores: selfValueByQuestion.size > 0,
   };
 }
 

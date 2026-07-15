@@ -71,21 +71,27 @@ export default function EmployeeProfilePage() {
         head.questions.map((q) => ({
           section: head.name,
           item: q.text,
-          value: q.value,
-          note: q.note,
+          selfValue: q.selfValue,
+          selfNote: q.selfNote,
+          reviewerValue: q.reviewerValue,
+          reviewerNote: q.reviewerNote,
         }))
       ),
       ...detail.targets.map((t) => ({
         section: "Targets",
         item: t.metric,
-        value: t.actual,
-        note: t.target != null ? `target: ${t.target}` : null,
+        selfValue: null,
+        selfNote: t.target != null ? `target: ${t.target}` : null,
+        reviewerValue: t.actual,
+        reviewerNote: null,
       })),
       ...detail.fitco.map((f) => ({
         section: "FITCO",
         item: `Phase ${f.phase}`,
-        value: f.value,
-        note: null,
+        selfValue: null,
+        selfNote: null,
+        reviewerValue: f.value,
+        reviewerNote: null,
       })),
     ];
     downloadCsv(`${detail.user.name}-scorecard-${period}.csv`, toCsv(rows));
@@ -165,7 +171,7 @@ export default function EmployeeProfilePage() {
         isOpen
         onToggle={() => {}}
         canEdit={detail.isActive}
-        onScore={() => setScoringOpen(true)}
+        onReviewScore={() => setScoringOpen(true)}
         onSwot={() => setSwotOpen(true)}
         onAddQuestion={() => setAddQuestionOpen(true)}
       />
@@ -175,13 +181,18 @@ export default function EmployeeProfilePage() {
         <AuditLog entries={auditEntries ?? []} />
       </div>
 
-      <ScoringSheet membershipId={scoringOpen ? detail.id : null} period={period} onClose={() => setScoringOpen(false)} />
+      <ScoringSheet
+        membershipId={scoringOpen ? detail.id : null}
+        period={period}
+        mode="reviewer"
+        onClose={() => setScoringOpen(false)}
+      />
       <SwotDrawer membershipId={swotOpen ? detail.id : null} period={period} onClose={() => setSwotOpen(false)} />
       <AddQuestionSheet
         open={addQuestionOpen}
         title="Add personal question"
         onClose={() => setAddQuestionOpen(false)}
-        onSubmit={(headId, text) => addPersonalQuestion.mutateAsync({ headId, text })}
+        onSubmit={(headId, text, type) => addPersonalQuestion.mutateAsync({ headId, text, type })}
       />
       <EditEmployeeSheet
         detail={detail}

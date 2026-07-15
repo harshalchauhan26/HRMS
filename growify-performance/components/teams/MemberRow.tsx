@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Lock, Sparkles, UserRound, UserX } from "lucide-react";
+import { ChevronDown, ClipboardCheck, Lock, Sparkles, UserRound, UserX } from "lucide-react";
 import InitialsAvatar from "@/components/common/InitialsAvatar";
 import Pill from "@/components/common/Pill";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,13 @@ interface MemberRowProps {
   forceOpen?: boolean;
   isOpen: boolean;
   onToggle: () => void;
+  /** Admin or this team's lead — governs FITCO/Targets editing, the review-score button, and
+   * the remove-from-team button. */
   canEdit: boolean;
-  onScore: (membershipId: string) => void;
+  /** Viewing your own record — governs the self-assess button. */
+  isSelf?: boolean;
+  onReviewScore: (membershipId: string) => void;
+  onSelfAssess?: (membershipId: string) => void;
   onSwot: (membershipId: string) => void;
   onAddQuestion: (membershipId: string) => void;
   /** Only admins get a profile page (edit/offboard/audit history are HR-admin actions) — omit to hide the button. */
@@ -39,7 +44,9 @@ export default function MemberRow({
   isOpen,
   onToggle,
   canEdit,
-  onScore,
+  isSelf,
+  onReviewScore,
+  onSelfAssess,
   onSwot,
   onAddQuestion,
   onViewProfile,
@@ -48,6 +55,7 @@ export default function MemberRow({
   const expanded = forceOpen || isOpen;
   const base = detail.targets.find((t) => t.metric === "base")?.actual ?? null;
   const firstName = detail.user.name.split(" ")[0];
+  const showActions = (canEdit || isSelf) && period !== "overall";
 
   function handleRemove() {
     if (!onRemove) return;
@@ -84,7 +92,8 @@ export default function MemberRow({
           <MiniStat label="Score" value={detail.overall ? detail.overall.toFixed(2) : "—"} color={scoreColor(detail.overall)} />
         </div>
 
-        {detail.hasScores && <Pill tone="ok">✓ Scored</Pill>}
+        {detail.hasScores && <Pill tone="ok">✓ Reviewed</Pill>}
+        {detail.hasSelfScores && <Pill tone="dashed">Self-assessed</Pill>}
 
         {onViewProfile && (
           <button
@@ -114,7 +123,7 @@ export default function MemberRow({
       >
         <div className="overflow-hidden">
           <div className="border-t border-hair2 px-4.5 pt-4 pb-5">
-            {!canEdit && (
+            {!canEdit && !isSelf && (
               <div className="mb-3.5 flex items-center gap-2 rounded-lg border border-[#F0DBB0] bg-warnbg px-3 py-2.5 text-xs text-warn">
                 <Lock className="size-3.5 shrink-0" />
                 Read-only — scores are entered by your team lead.
@@ -133,7 +142,7 @@ export default function MemberRow({
                   editable={canEdit}
                 />
               </Panel>
-              <Panel title="Competency heads · /4">
+              <Panel title="Competency heads · /4 (reviewer)">
                 <CompetencyHeads heads={detail.heads} />
               </Panel>
             </div>
@@ -152,14 +161,24 @@ export default function MemberRow({
               </Panel>
             </div>
 
-            {canEdit && period !== "overall" && (
+            {showActions && (
               <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <Button size="sm" onClick={() => onScore(detail.id)}>
-                  {detail.hasScores ? "Edit scores" : "Score competencies"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => onAddQuestion(detail.id)}>
-                  + Add question for {firstName}
-                </Button>
+                {canEdit && (
+                  <Button size="sm" onClick={() => onReviewScore(detail.id)}>
+                    {detail.hasScores ? "Edit review score" : "Score (review)"}
+                  </Button>
+                )}
+                {isSelf && onSelfAssess && (
+                  <Button size="sm" variant="outline" onClick={() => onSelfAssess(detail.id)} className="gap-1.5">
+                    <ClipboardCheck className="size-3.5" />
+                    {detail.hasSelfScores ? "Edit self-assessment" : "Self-assess"}
+                  </Button>
+                )}
+                {canEdit && (
+                  <Button size="sm" variant="outline" onClick={() => onAddQuestion(detail.id)}>
+                    + Add question for {firstName}
+                  </Button>
+                )}
                 {onRemove && (
                   <Button size="sm" variant="outline" onClick={handleRemove} className="ml-auto gap-1.5 text-destructive">
                     <UserX className="size-3.5" /> Remove from team
@@ -167,7 +186,7 @@ export default function MemberRow({
                 )}
               </div>
             )}
-            {canEdit && period === "overall" && (
+            {(canEdit || isSelf) && period === "overall" && (
               <div className="mt-4 flex items-center justify-between gap-2.5">
                 <p className="text-[11px] text-muted-foreground">
                   Switch to a specific quarter to score competencies.

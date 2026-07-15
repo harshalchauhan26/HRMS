@@ -40,14 +40,19 @@ const updateMembershipSchema = z.object({
 const addQuestionSchema = z.object({
   headId: z.string().uuid(),
   text: z.string().min(1),
+  type: z.enum(["rating", "number"]).default("rating"),
 });
 
 const putScoresSchema = z.object({
   period: quarterSchema,
+  // Which layer this save is for — "self" (the employee's own reflection, no weight in any
+  // aggregate) or "reviewer" (TL/HR, the official score). Authorized per-layer inside the handler
+  // since it depends on the request body, not just the URL.
+  scoredBy: z.enum(["self", "reviewer"]),
   scores: z.array(
     z.object({
       questionId: z.string().uuid(),
-      value: z.number().int().min(1).max(4).nullable(),
+      value: z.number().nullable(),
       note: z.string().nullable().optional(),
     })
   ),
@@ -93,7 +98,7 @@ membershipsRouter.post(
     await requireMembership(req.params.id);
     const [created] = await db
       .insert(questions)
-      .values({ headId: body.headId, membershipId: req.params.id, text: body.text })
+      .values({ headId: body.headId, membershipId: req.params.id, text: body.text, type: body.type })
       .returning();
     res.status(201).json(created);
   })
@@ -114,13 +119,46 @@ membershipsRouter.delete(
 
 membershipsRouter.put(
   "/:id/scores",
-  requireAdminOrMembershipTeamLead("id"),
+  requireAdminOrMembershipTeamAccess("id"),
   asyncHandler(async (req, res) => {
     const body = putScoresSchema.parse(req.body);
-    await requireMembership(req.params.id);
+    const membership = await requireMembership(req.params.id);
+
+    // Baseline access (admin/lead/self) is already checked by the middleware above; which
+    // *layer* someone may write depends on the body, so it's checked here instead.
+    if (body.scoredBy === "reviewer") {
+      const isLead = req.auth!.memberships.some((m) => m.teamId === membership.teamId && m.isLead);
+      if (!req.auth!.isAdmin && !isLead) {
+        throw new HttpError(403, "Only an admin or this team's lead can submit a review score.");
+      }
+    } else {
+      const isSelf = req.auth!.memberships.some((m) => m.membershipId === req.params.id);
+      if (!req.auth!.isAdmin && !isSelf) {
+        throw new HttpError(403, "You can only submit your own self-assessment.");
+      }
+    }
+
+    // Validate each value against its question's type: "rating" stays a 1-4 integer (the DB
+    // column itself has no range check any more, since "number" questions share it), "number"
+    // just needs to be finite.
+    const questionIds = body.scores.map((s) => s.questionId);
+    const relevantQuestions = questionIds.length
+      ? await db.select().from(questions).where(inArray(questions.id, questionIds))
+      : [];
+    const typeByQuestionId = new Map(relevantQuestions.map((q) => [q.id, q.type]));
+    for (const s of body.scores) {
+      if (s.value == null) continue;
+      const type = typeByQuestionId.get(s.questionId);
+      if (type === "rating" && (!Number.isInteger(s.value) || s.value < 1 || s.value > 4)) {
+        throw new HttpError(400, "Rating questions take a whole number from 1 to 4.");
+      }
+      if (!Number.isFinite(s.value)) {
+        throw new HttpError(400, "Score value must be a number.");
+      }
+    }
 
     // Batched as at most one upsert + one delete statement — not one round trip per
-    // question — since each PUT can cover all 25 questions and this API talks to a
+    // question — since each PUT can cover many questions and this API talks to a
     // remote Postgres instance where per-query network latency adds up fast.
     const toUpsert = body.scores.filter((s) => s.value != null);
     const toDelete = body.scores.filter((s) => s.value == null);
@@ -133,12 +171,13 @@ membershipsRouter.put(
             membershipId: req.params.id,
             questionId: s.questionId,
             period: body.period,
-            value: s.value as number,
+            scoredBy: body.scoredBy,
+            value: (s.value as number).toString(),
             note: s.note ?? null,
           }))
         )
         .onConflictDoUpdate({
-          target: [scores.membershipId, scores.questionId, scores.period],
+          target: [scores.membershipId, scores.questionId, scores.period, scores.scoredBy],
           set: { value: sql`excluded.value`, note: sql`excluded.note`, updatedAt: new Date() },
         });
     }
@@ -149,6 +188,7 @@ membershipsRouter.put(
           and(
             eq(scores.membershipId, req.params.id),
             eq(scores.period, body.period),
+            eq(scores.scoredBy, body.scoredBy),
             inArray(
               scores.questionId,
               toDelete.map((s) => s.questionId)
@@ -161,7 +201,7 @@ membershipsRouter.put(
       await logAudit(
         req.params.id,
         "scores.updated",
-        `Updated ${toUpsert.length} score(s) and cleared ${toDelete.length} for ${body.period.toUpperCase()}.`,
+        `Updated ${toUpsert.length} ${body.scoredBy} score(s) and cleared ${toDelete.length} for ${body.period.toUpperCase()}.`,
         actorNameFromRequest(req)
       );
     }

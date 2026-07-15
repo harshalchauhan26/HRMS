@@ -22,7 +22,7 @@ export function useJobRoleQuestions(jobRoleId: string | null) {
   return useQuery({
     queryKey: ["job-roles", jobRoleId, "questions"],
     queryFn: () =>
-      api.get<Pick<ApiQuestionWithScore, "id" | "headId" | "text">[]>(
+      api.get<Pick<ApiQuestionWithScore, "id" | "headId" | "text" | "type">[]>(
         `/api/job-roles/${jobRoleId}/questions`
       ),
     enabled: !!jobRoleId,
@@ -32,7 +32,7 @@ export function useJobRoleQuestions(jobRoleId: string | null) {
 export function useAddSharedQuestion(jobRoleId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { headId: string; text: string }) =>
+    mutationFn: (body: { headId: string; text: string; type: "rating" | "number" }) =>
       api.post(`/api/job-roles/${jobRoleId}/questions`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job-roles", jobRoleId, "questions"] });
